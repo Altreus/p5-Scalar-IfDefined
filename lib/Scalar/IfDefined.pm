@@ -119,9 +119,10 @@ If the scalar is a hash ref, the first argument is used to access the hash.
 If the scalar is a code ref, the code ref is run with all the arguments.
 
 As a special case, if the first argument is a code ref, it will be run with the
-scalar as the first argument and the other arguments as the rest. This form
-allows you to use C<$ifdef> on a simple scalar - but you might be better off
-with C<ifdef> itself for that.
+scalar as the first argument and the other arguments as the rest. It also
+locally sets C<$_> to the scalar, so within the subref, C<$_> and C<$_[0]> will
+be the same thing. This form allows you to use C<$ifdef> on a simple scalar -
+but you might be better off with C<ifdef> itself for that.
 
 The following uses will all return undef if the C<$scalar> is undef, or The
 Right Thing if not.
@@ -148,7 +149,10 @@ our $ifdef = sub {
 
     return undef if not defined $obj;
 
-    return $obj->$method(@args)   if blessed $obj or ifdef {$_ eq 'CODE'} reftype($method);
+    return do {
+        local $_ = $obj;
+        $obj->$method(@args)
+    } if blessed $obj or ifdef {$_ eq 'CODE'} reftype($method);
     return $obj->[$method]        if reftype $obj eq 'ARRAY';
     return $obj->{$method}        if reftype $obj eq 'HASH';
     return $obj->($method, @args) if reftype $obj eq 'CODE';
